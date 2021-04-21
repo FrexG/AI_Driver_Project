@@ -15,6 +15,8 @@ class ReadVideoFrame:
         # If path exists
         if path.exists(self.video_path):
             self.read_frame()
+        else:
+            raise FileNotFoundError("File Doesn't exist")
 
     def read_frame(self):
         # read video frame and display it
