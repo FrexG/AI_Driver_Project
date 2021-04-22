@@ -1,6 +1,7 @@
 from lane_tracking.open_video import ReadVideoFrame
 
-path_to_video = "/home/frexg/Downloads/Lane Detection Video.mp4"
+video_1 = {"path": "/home/frexg/Downloads/Lane Detection Video.mp4", "label": 1}
+video_2 = {"path": "/home/frexg/Downloads/test2.mp4", "label": 0}
 
 if __name__ == "__main__":
-    ReadVideoFrame(path_to_video)
+    ReadVideoFrame(video_2)

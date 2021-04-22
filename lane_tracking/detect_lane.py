@@ -4,8 +4,16 @@ import numpy as np
 
 class LaneDetector:
     road_frame = None
+    roi_params = []
 
-    def detect_lane(self, lane_frame):
+    def __init__(self, label):
+        if label:
+            self.roi_params = [150, 1000, (650, 520)]
+        else:
+            self.roi_params = [100, 1150, (650, 400)]
+
+    def detect_lane(self, lane_frame, label):
+
         self.road_frame = lane_frame
 
         # as a test convert the frame to gray scale
@@ -29,7 +37,8 @@ class LaneDetector:
         roi_mask = np.zeros_like(image)
         image_height = image.shape[0]
         roi_triangle = np.array([
-            [(250, image_height), (1050, image_height), (620, 500)]
+            [(self.roi_params[0], image_height),
+             (self.roi_params[1], image_height), self.roi_params[2]]
         ])
 
         cv.fillPoly(roi_mask, roi_triangle, 255)
@@ -43,8 +52,8 @@ class LaneDetector:
     def calculate_hough_lines(self, roi):
         # 2 pixel spatial percission
         # 1 degree(radians) percission
-        hough_lines = cv.HoughLinesP(roi, 2, np.pi/180, 100, np.array([]),
-                                     minLineLength=60, maxLineGap=5)
+        hough_lines = cv.HoughLinesP(roi, 2, np.pi/180, 70, np.array([]),
+                                     minLineLength=40, maxLineGap=5)
         return hough_lines
 
     def display_hough_lines(self, img, roi):
@@ -55,6 +64,6 @@ class LaneDetector:
             for line in lines:
 
                 x1, y1, x2, y2 = line.reshape(4)
-                cv.line(lines_canvas, (x1, y1), (x2, y2), (0, 255, 0), 10)
+                cv.line(lines_canvas, (x1, y1), (x2, y2), (190, 55, 54), 10)
 
         return lines_canvas
