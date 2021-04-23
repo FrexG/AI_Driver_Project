@@ -37,7 +37,7 @@ class ReadVideoFrame:
 
             # 16 miliseconds per frame (60fps)
 
-            if cv.waitKey(1) == ord('q'):
+            if cv.waitKey(16) == ord('q'):
                 break
         cap.release()
         cv.destroyAllWindows()
