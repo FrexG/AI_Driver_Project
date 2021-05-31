@@ -97,7 +97,7 @@ class LaneDetector:
     def makeLine(self, lane):
         slope, intercept = lane
         y1 = int(self.road_frame.shape[0])
-        y2 = int(y1 * 3/4)
+        y2 = int(y1 * 1/2)
 
         x1 = int((y1 - intercept) / slope)
         x2 = int((y2 - intercept) / slope)
