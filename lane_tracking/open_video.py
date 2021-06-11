@@ -3,7 +3,8 @@ Open video files and read frames
 """
 # Import Opencv
 import cv2 as cv
-from .detect_lane import LaneDetector
+from lane_tracking.detect_lane import LaneDetector
+from Method2.lane_color_segmentation import SegmentLane
 from os import path
 
 
@@ -31,9 +32,9 @@ class ReadVideoFrame:
 
             assert ret == True, "End of frame"
 
-            gray = self.detector.detect_lane(frame, self.video['label'])
-
-            cv.imshow('frame', gray)
+            #result = self.detector.detect_lane(frame, self.video['label'])
+            result = SegmentLane(frame).getFrame()
+            cv.imshow('frame', result)
 
             # 16 miliseconds per frame (60fps)
 
