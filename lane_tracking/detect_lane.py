@@ -59,47 +59,10 @@ class LaneDetector:
     def display_hough_lines(self, img, roi):
         lines = self.calculate_hough_lines(roi)
         lines_canvas = np.zeros_like(img)
+        # print(lines)
+
         if lines is not None:
-            print(f'lines at{lines}')
-            averaged_lines = self.hough_averages(lines)
-            left, right = averaged_lines
-            x1, y1, x2, y2 = left
-            cv.line(lines_canvas, (x1, y1), (x2, y2), (19, 255, 54), 10)
-            x1, y1, x2, y2 = right
-            cv.line(lines_canvas, (x1, y1), (x2, y2), (19, 255, 54), 10)
-
+            for line in lines:
+                x1, y1, x2, y2 = line.reshape(-1)
+                cv.line(lines_canvas, (x1, y1), (x2, y2), (0, 255, 0), 2)
         return lines_canvas
-
-    def hough_averages(self, lines):
-        left_lane = []
-        right_lane = []
-        for line in lines:
-            x1, y1, x2, y2 = line.reshape(4)
-            parameters = np.polyfit((x1, x2), (y1, y2), 1)
-
-            slope = parameters[0]
-            intercept = parameters[1]
-            if slope < 0:
-                left_lane.append((slope, intercept))
-            else:
-                right_lane.append((slope, intercept))
-
-            left_lane_avg = np.average(left_lane, 0)
-
-            right_lane_avg = np.average(right_lane, 0)
-
-        left_line = self.makeLine(left_lane_avg)
-
-        right_line = self.makeLine(right_lane_avg)
-
-        return (left_line, right_line)
-
-    def makeLine(self, lane):
-        slope, intercept = lane
-        y1 = int(self.road_frame.shape[0])
-        y2 = int(y1 * 1/2)
-
-        x1 = int((y1 - intercept) / slope)
-        x2 = int((y2 - intercept) / slope)
-
-        return (x1, y1, x2, y2)
