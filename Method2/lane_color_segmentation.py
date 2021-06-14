@@ -7,10 +7,13 @@ class SegmentLane:
 
     def __init__(self, frame):
         self.frame = frame
-        self.operationROI(frame)
+        self.HEIGHT = frame.shape[0]
+        self.WIDTH = frame.shape[1]
+        self.transformPerspective()
+        # self.operationROI(frame)
 
     def getFrame(self):
-        return self.frame[:, :, 2]
+        return self.frame
 
     def convert2HSV(self, frame):
         self.frame = cv.cvtColor(frame, cv.COLOR_BGR2HLS)
@@ -28,10 +31,10 @@ class SegmentLane:
         # depends on the camera and video setting
 
         p1 = (250, height)
-        p2 = (1000, height)
+        p2 = (1050, height)
 
-        p3 = (600, height/4)
-        p4 = (550, height/4)
+        p3 = (700, height/2)
+        p4 = (450, height/2)
 
         roi = np.array([[p1, p2, p3, p4]], dtype=np.int32)
 
@@ -41,7 +44,27 @@ class SegmentLane:
 
         self.overlayMask2Frame()
 
-        self.frame = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
-
     def overlayMask2Frame(self):
         self.frame = cv.bitwise_and(self.frame, self.frame, mask=self.ROI_MASK)
+
+    def transformPerspective(self):
+        # Define the values for the three
+        # points of the polygon
+        # depends on the camera and video setting
+        p1 = [450, self.HEIGHT/2.0]
+        p2 = [700, self.HEIGHT/2.0]
+        p3 = [250, self.HEIGHT]
+        p4 = [1050, self.HEIGHT]
+        # points to be transformed
+        sourcePoint = np.float32([p1, p2, p3, p4])
+        transformationPoints = np.float32([[0, 0], [self.WIDTH, 0],
+                                           [0, self.HEIGHT], [self.WIDTH, self.HEIGHT]])
+        # get the transformation matrix
+
+        transformMatrix = cv.getPerspectiveTransform(
+            sourcePoint, transformationPoints)
+
+        # Wrap perspective
+
+        self.frame = cv.warpPerspective(
+            self.frame, transformMatrix, (self.WIDTH, self.HEIGHT))
