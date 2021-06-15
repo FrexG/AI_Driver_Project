@@ -9,14 +9,30 @@ class SegmentLane:
         self.frame = frame
         self.HEIGHT = frame.shape[0]
         self.WIDTH = frame.shape[1]
-        self.transformPerspective()
-        # self.operationROI(frame)
+        # self.convert2HSV(frame)
+        self.convert2YCRCB(frame)
 
     def getFrame(self):
         return self.frame
 
     def convert2HSV(self, frame):
-        self.frame = cv.cvtColor(frame, cv.COLOR_BGR2HLS)
+        hsvFrame = cv.cvtColor(frame, cv.COLOR_BGR2HLS)
+
+        self.transformPerspective(hsvFrame)
+
+    def convert2YCRCB(self, frame):
+
+        ycrcbFrame = cv.cvtColor(frame, cv.COLOR_BGR2YCrCb)
+
+        binary = self.otsuThreshold(
+            self.transformPerspective(ycrcbFrame))
+
+        self.frame = binary
+
+    def otsuThreshold(self, colorFrame):
+        ret, thresh = cv.threshold(
+            colorFrame, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        return thresh
 
     def operationROI(self, frame):
         maskCanvas = np.zeros_like(frame[:, :, 0])
@@ -47,12 +63,13 @@ class SegmentLane:
     def overlayMask2Frame(self):
         self.frame = cv.bitwise_and(self.frame, self.frame, mask=self.ROI_MASK)
 
-    def transformPerspective(self):
+    # adaptive ROI for feature experiments
+    def transformPerspective(self, frame):
         # Define the values for the three
         # points of the polygon
         # depends on the camera and video setting
-        p1 = [450, self.HEIGHT/2.0]
-        p2 = [700, self.HEIGHT/2.0]
+        p1 = [450, self.HEIGHT/2.2]
+        p2 = [700, self.HEIGHT/2.2]
         p3 = [250, self.HEIGHT]
         p4 = [1050, self.HEIGHT]
         # points to be transformed
@@ -65,6 +82,7 @@ class SegmentLane:
             sourcePoint, transformationPoints)
 
         # Wrap perspective
+        wrapped = cv.warpPerspective(
+            frame, transformMatrix, (self.WIDTH, self.HEIGHT))
 
-        self.frame = cv.warpPerspective(
-            self.frame, transformMatrix, (self.WIDTH, self.HEIGHT))
+        return wrapped[:, :, 0]
