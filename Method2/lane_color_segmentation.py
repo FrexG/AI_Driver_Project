@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 class SegmentLane:
-    MIN_PIXELS_PER_BIN = 500
+    MIN_PIXELS_PER_BIN = 1000
     ROI_MASK = None
     # left and right peaks
     LEFT_PEAK = None
@@ -16,6 +16,7 @@ class SegmentLane:
         self.WIDTH = frame.shape[1]
         # self.convert2HSV(frame)
         self.convert2YCRCB(frame)
+        # self.operationROI(frame)
 
     def getFrame(self):
         return self.frame
@@ -51,11 +52,10 @@ class SegmentLane:
         # points of the polygon
         # depends on the camera and video setting
 
-        p1 = (250, height)
-        p2 = (1050, height)
-
-        p3 = (700, height/2)
-        p4 = (450, height/2)
+        p1 = (200, height)
+        p2 = (1250, height)
+        p3 = (700, 450)
+        p4 = (550, 450)
 
         roi = np.array([[p1, p2, p3, p4]], dtype=np.int32)
 
@@ -73,10 +73,10 @@ class SegmentLane:
         # Define the values for the three
         # points of the polygon
         # depends on the camera and video setting
-        p1 = [500, self.HEIGHT/2.2]
-        p2 = [700, self.HEIGHT/2.2]
-        p3 = [250, self.HEIGHT]
-        p4 = [1050, self.HEIGHT]
+        p1 = [550, 450]
+        p2 = [700, 450]
+        p3 = [200, self.HEIGHT - 50]
+        p4 = [1250, self.HEIGHT - 50]
         # points to be transformed
         sourcePoint = np.float32([p1, p2, p3, p4])
         transformationPoints = np.float32([[0, 0], [self.WIDTH, 0],
@@ -91,6 +91,29 @@ class SegmentLane:
             frame, transformMatrix, (self.WIDTH, self.HEIGHT))
 
         return wrapped[:, :, 0]
+
+    def inversePerspective(self, frame):
+        # Define the values for the three
+        # points of the polygon
+        # depends on the camera and video setting
+        p1 = [550, 450]
+        p2 = [700, 450]
+        p3 = [200, self.HEIGHT - 50]
+        p4 = [1250, self.HEIGHT - 50]
+        # points to be transformed
+        sourcePoint = np.float32([[0, 0], [self.WIDTH, 0],
+                                  [0, self.HEIGHT], [self.WIDTH, self.HEIGHT]])
+        transformationPoints = np.float32([p1, p2, p3, p4])
+        # get the transformation matrix
+
+        transformMatrix = cv.getPerspectiveTransform(
+            sourcePoint, transformationPoints)
+
+        # Warp perspective
+        wrapped = cv.warpPerspective(
+            frame, transformMatrix, (self.WIDTH, self.HEIGHT))
+
+        return wrapped
 
     def histogramPeakFinder(self, binaryFrame):
         # histogram of binary image along the x-axis
@@ -142,9 +165,9 @@ class SegmentLane:
 
             # draw rectangle
             cv.rectangle(out, (left_x1Pos, y1Pos),
-                         (left_x2Pos, y2Pos), (255, 0, 0), 2)
+                         (left_x2Pos, y2Pos), (255, 0, 255), 3)
             cv.rectangle(out, (right_x1Pos, y1Pos),
-                         (right_x2Pos, y2Pos), (255, 0, 0), 2)
+                         (right_x2Pos, y2Pos), (0, 0, 255), 3)
 
             nonzero_left_window = ((all_non_zero_x < left_x2Pos) & (all_non_zero_x > left_x1Pos) &
                                    (all_non_zero_y < y2Pos) & (all_non_zero_y > y1Pos)).nonzero()[0]
@@ -183,6 +206,7 @@ class SegmentLane:
 
         draw_points_left = (np.asarray([leftX, leftY]).T).astype(np.int32)
         draw_points_right = (np.asarray([rightX, rightY]).T).astype(np.int32)
-        cv.polylines(out, [draw_points_left], False, (0, 0, 255), 3)
-        cv.polylines(out, [draw_points_right], False, (0, 255, 0), 3)
-        return out
+        cv.polylines(out, [draw_points_left], False, (0, 0, 255), 5)
+        cv.polylines(out, [draw_points_right], False, (0, 255, 0), 5)
+
+        return cv.addWeighted(self.frame, 1, self.inversePerspective(out), 0.7, 0)

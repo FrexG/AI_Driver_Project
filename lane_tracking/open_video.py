@@ -32,8 +32,8 @@ class ReadVideoFrame:
 
             assert ret == True, "End of frame"
 
-            #result = self.detector.detect_lane(frame, self.video['label'])
-            result = SegmentLane(frame).getFrame()
+            result = self.detector.detect_lane(frame, self.video['label'])
+            #result = SegmentLane(frame).getFrame()
             cv.imshow('frame', result)
 
             # 16 miliseconds per frame (60fps)
