@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 class SegmentLane:
-    MIN_PIXELS_PER_BIN = 50
+    MIN_PIXELS_PER_BIN = 500
     ROI_MASK = None
     # left and right peaks
     LEFT_PEAK = None
@@ -73,7 +73,7 @@ class SegmentLane:
         # Define the values for the three
         # points of the polygon
         # depends on the camera and video setting
-        p1 = [450, self.HEIGHT/2.2]
+        p1 = [500, self.HEIGHT/2.2]
         p2 = [700, self.HEIGHT/2.2]
         p3 = [250, self.HEIGHT]
         p4 = [1050, self.HEIGHT]
@@ -94,14 +94,13 @@ class SegmentLane:
 
     def histogramPeakFinder(self, binaryFrame):
         # histogram of binary image along the x-axis
-        # c = np.apply_along_axis(lambda a: np.histogram(
-        #    a, bins=2)[0], axis=0, arr=binaryFrame[binaryFrame.shape[0] // 2:, :])
-        c = np.sum(
-            binaryFrame, axis=0)
-        midpoint = c.shape[0] // 2
 
-        leftpeak = np.argmax(c[:midpoint])
-        righpeak = np.argmax(c[midpoint:]) + midpoint
+        hist = np.sum(
+            binaryFrame, axis=0)
+        midpoint = hist.shape[0] // 2
+
+        leftpeak = np.argmax(hist[:midpoint])
+        righpeak = np.argmax(hist[midpoint:]) + midpoint
 
         self.LEFT_PEAK = leftpeak
         self.RIGHT_PEAK = righpeak
@@ -112,17 +111,26 @@ class SegmentLane:
         out = np.dstack((binaryFrame, binaryFrame, binaryFrame))
         # Window parameters #
         # window size
-        numberOfWindows = 4
+        numberOfWindows = 9
         # window is 10 percent of frame width
-        windowWidth = int(binaryFrame.shape[1] * 0.1)
+        windowWidth = 150
         windowHeight = int(binaryFrame.shape[0] / numberOfWindows)
 
-        # starting x position of the windows
+        # starting x position of the left and right windows
         startLeftX = self.LEFT_PEAK
         startRightX = self.RIGHT_PEAK
+        # Empty array to hold the indices of the left and right
+        # lane pixels
+
+        all_non_zero_x = np.nonzero(binaryFrame)[1]
+        all_non_zero_y = np.nonzero(binaryFrame)[0]
+
+        left_lane_indices = []
+        right_lane_indices = []
 
         # draw the windows
         for i in range(numberOfWindows):
+            # Current x and y positions
             y1Pos = self.HEIGHT - windowHeight * (i+1)
             y2Pos = self.HEIGHT - windowHeight * i
 
@@ -132,13 +140,11 @@ class SegmentLane:
             right_x1Pos = startRightX - windowWidth
             right_x2Pos = startRightX + windowWidth
 
+            # draw rectangle
             cv.rectangle(out, (left_x1Pos, y1Pos),
-                         (left_x2Pos, y2Pos), (0, 255, 0), 2)
+                         (left_x2Pos, y2Pos), (255, 0, 0), 2)
             cv.rectangle(out, (right_x1Pos, y1Pos),
                          (right_x2Pos, y2Pos), (255, 0, 0), 2)
-
-            all_non_zero_x = np.nonzero(binaryFrame)[1]
-            all_non_zero_y = np.nonzero(binaryFrame)[0]
 
             nonzero_left_window = ((all_non_zero_x < left_x2Pos) & (all_non_zero_x > left_x1Pos) &
                                    (all_non_zero_y < y2Pos) & (all_non_zero_y > y1Pos)).nonzero()[0]
@@ -151,8 +157,32 @@ class SegmentLane:
 
             if leftPixels > self.MIN_PIXELS_PER_BIN:
                 startLeftX = int(np.mean(all_non_zero_x[nonzero_left_window]))
+                left_lane_indices.append(nonzero_left_window)
             if rightPixels > self.MIN_PIXELS_PER_BIN:
                 startRightX = int(
                     np.mean(all_non_zero_x[nonzero_right_window]))
+                right_lane_indices.append(nonzero_right_window)
 
+        # Concatenate indices
+        left_lane_indices = np.concatenate(left_lane_indices)
+        right_lane_indices = np.concatenate(right_lane_indices)
+
+        # get left and right lane pixel postions
+        leftX = all_non_zero_x[left_lane_indices]
+        leftY = all_non_zero_y[left_lane_indices]
+
+        rightX = all_non_zero_x[right_lane_indices]
+        rightY = all_non_zero_y[right_lane_indices]
+
+        print(rightX)
+        # fit a second(third) degree polynomial to the pixel positions
+
+        leftFit = np.polyfit(leftX, leftY, 2)
+
+        rightFit = np.polyfit(rightX, rightY, 2)
+
+        draw_points_left = (np.asarray([leftX, leftY]).T).astype(np.int32)
+        draw_points_right = (np.asarray([rightX, rightY]).T).astype(np.int32)
+        cv.polylines(out, [draw_points_left], False, (0, 0, 255), 3)
+        cv.polylines(out, [draw_points_right], False, (0, 255, 0), 3)
         return out
