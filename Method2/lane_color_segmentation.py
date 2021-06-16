@@ -1,9 +1,14 @@
 import cv2 as cv
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class SegmentLane:
+    MIN_PIXELS_PER_BIN = 50
     ROI_MASK = None
+    # left and right peaks
+    LEFT_PEAK = None
+    RIGHT_PEAK = None
 
     def __init__(self, frame):
         self.frame = frame
@@ -24,10 +29,10 @@ class SegmentLane:
 
         ycrcbFrame = cv.cvtColor(frame, cv.COLOR_BGR2YCrCb)
 
-        binary = self.otsuThreshold(
-            self.transformPerspective(ycrcbFrame))
+        warped = self.transformPerspective(ycrcbFrame)
+        binary = self.otsuThreshold(warped)
 
-        self.frame = binary
+        self.histogramPeakFinder(binary)
 
     def otsuThreshold(self, colorFrame):
         ret, thresh = cv.threshold(
@@ -81,8 +86,73 @@ class SegmentLane:
         transformMatrix = cv.getPerspectiveTransform(
             sourcePoint, transformationPoints)
 
-        # Wrap perspective
+        # Warp perspective
         wrapped = cv.warpPerspective(
             frame, transformMatrix, (self.WIDTH, self.HEIGHT))
 
         return wrapped[:, :, 0]
+
+    def histogramPeakFinder(self, binaryFrame):
+        # histogram of binary image along the x-axis
+        # c = np.apply_along_axis(lambda a: np.histogram(
+        #    a, bins=2)[0], axis=0, arr=binaryFrame[binaryFrame.shape[0] // 2:, :])
+        c = np.sum(
+            binaryFrame, axis=0)
+        midpoint = c.shape[0] // 2
+
+        leftpeak = np.argmax(c[:midpoint])
+        righpeak = np.argmax(c[midpoint:]) + midpoint
+
+        self.LEFT_PEAK = leftpeak
+        self.RIGHT_PEAK = righpeak
+        self.frame = self.slidingWindow(binaryFrame)
+
+    def slidingWindow(self, binaryFrame):
+
+        out = np.dstack((binaryFrame, binaryFrame, binaryFrame))
+        # Window parameters #
+        # window size
+        numberOfWindows = 4
+        # window is 10 percent of frame width
+        windowWidth = int(binaryFrame.shape[1] * 0.1)
+        windowHeight = int(binaryFrame.shape[0] / numberOfWindows)
+
+        # starting x position of the windows
+        startLeftX = self.LEFT_PEAK
+        startRightX = self.RIGHT_PEAK
+
+        # draw the windows
+        for i in range(numberOfWindows):
+            y1Pos = self.HEIGHT - windowHeight * (i+1)
+            y2Pos = self.HEIGHT - windowHeight * i
+
+            left_x1Pos = startLeftX - windowWidth
+            left_x2Pos = startLeftX + windowWidth
+
+            right_x1Pos = startRightX - windowWidth
+            right_x2Pos = startRightX + windowWidth
+
+            cv.rectangle(out, (left_x1Pos, y1Pos),
+                         (left_x2Pos, y2Pos), (0, 255, 0), 2)
+            cv.rectangle(out, (right_x1Pos, y1Pos),
+                         (right_x2Pos, y2Pos), (255, 0, 0), 2)
+
+            all_non_zero_x = np.nonzero(binaryFrame)[1]
+            all_non_zero_y = np.nonzero(binaryFrame)[0]
+
+            nonzero_left_window = ((all_non_zero_x < left_x2Pos) & (all_non_zero_x > left_x1Pos) &
+                                   (all_non_zero_y < y2Pos) & (all_non_zero_y > y1Pos)).nonzero()[0]
+
+            nonzero_right_window = ((all_non_zero_x < right_x2Pos) & (all_non_zero_x > right_x1Pos) &
+                                    (all_non_zero_y < y2Pos) & (all_non_zero_y > y1Pos)).nonzero()[0]
+
+            leftPixels = len(nonzero_left_window)
+            rightPixels = len(nonzero_right_window)
+
+            if leftPixels > self.MIN_PIXELS_PER_BIN:
+                startLeftX = int(np.mean(all_non_zero_x[nonzero_left_window]))
+            if rightPixels > self.MIN_PIXELS_PER_BIN:
+                startRightX = int(
+                    np.mean(all_non_zero_x[nonzero_right_window]))
+
+        return out
