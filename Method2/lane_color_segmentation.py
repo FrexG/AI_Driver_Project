@@ -209,4 +209,4 @@ class SegmentLane:
         cv.polylines(out, [draw_points_left], False, (0, 0, 255), 5)
         cv.polylines(out, [draw_points_right], False, (0, 255, 0), 5)
 
-        return cv.addWeighted(self.frame, 1, self.inversePerspective(out), 0.7, 0)
+        return cv.addWeighted(self.frame, 1, self.inversePerspective(out), 1, 0)
